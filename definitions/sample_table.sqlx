@@ -1,5 +1,5 @@
 config {
-  dependencies: [ "first_view",],
+  dependencies: [ "first_view","sample_source"],
   type: "table"
 }
 
