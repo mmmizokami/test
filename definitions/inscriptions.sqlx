@@ -1,1 +1,6 @@
+config {
+  type: "table"
+}
+
+
 SELECT * FROM `uolcs-caribe-qa.raw_phm.dimensoes_cv_dm_pltins` LIMIT 1000
