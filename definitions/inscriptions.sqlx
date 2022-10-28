@@ -1,6 +1,14 @@
 config {
-  type: "table"
+  type: "table",
+  tags: ["daily", "view"],
+  description: "Descrição da tabela.",
+  columns: {
+    FD_INSCCH_PLTINS: {
+      description: "Descricao da coluna 1",
+      bigqueryPolicyTags: ["projects/uolcs-caribe-qa/locations/us/taxonomies/2765126565104185547/policyTags/8786333025280477610"]
+    }
+  }
 }
 
 
-SELECT * FROM `uolcs-caribe-qa.raw_phm.dimensoes_cv_dm_pltins` LIMIT 1000
+SELECT FD_INSCCH_PLTINS FROM `uolcs-caribe-qa.raw_phm.dimensoes_cv_dm_pltins` LIMIT 1000

@@ -1,0 +1,10 @@
+config {
+  type: "table",
+  columns: {
+    column1: {
+      bigqueryPolicyTags: ["projects/dataform-integration-tests/locations/us/taxonomies/800183280162998443/policyTags/494923997126550963"]
+    }
+  }
+}
+
+select "test" as column1
