@@ -7,4 +7,4 @@ config {
   }
 }
 
-select "test" as column1
+select 1 as column1
