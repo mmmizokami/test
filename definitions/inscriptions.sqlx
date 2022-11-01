@@ -1,6 +1,6 @@
 config {
   type: "table",
-  tags: ["daily", "view"],
+  tags: ["hourly"],
   dependencies: [ "first_view","sample_source"],
   description: "Descrição da tabela.",
   columns: {
