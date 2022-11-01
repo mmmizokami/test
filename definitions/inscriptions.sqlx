@@ -1,6 +1,7 @@
 config {
   type: "table",
   tags: ["daily", "view"],
+  dependencies: [ "first_view","sample_source"],
   description: "Descrição da tabela.",
   columns: {
     FD_INSCCH_PLTINS: {
