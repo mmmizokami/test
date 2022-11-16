@@ -8,7 +8,7 @@ config {
   }
 }
 
-
+/*
 -- BLOGS HITS
 WITH PERIODO AS (
      SELECT "$data{%Y%m%d}"
@@ -153,3 +153,4 @@ RESULTS AS (
   FROM CLICK_ASSINAR
 )
 select * from results
+*/

@@ -10,7 +10,7 @@ config {
 }
 
 
-
+/*
 #standardSQL
 -- query_id:relatorios_adm_conteudo.newsletter_diario
 WITH PERIODO AS (
@@ -125,3 +125,4 @@ SELECT
   sessions
 FROM NEWSLETTERS
 WHERE campaign IS NOT NULL
+*/
