@@ -1,0 +1,5 @@
+config { type: "table",
+         tags: ["parameter"]
+ }
+
+select ${dataform.projectConfig.vars.date} as date_parameter

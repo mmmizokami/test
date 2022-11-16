@@ -1,0 +1,155 @@
+config {
+  type: "table",
+  tags: ["daily"],
+  description: "Consulta simples do ARS: ADM_Conteudo_Assinaturas_Blogs_Audiencia_Pageviews",
+  columns: {
+    date:"Data da audiencia",
+    fullVisitorId:"ID unico de identificação"
+  }
+}
+
+
+-- BLOGS HITS
+WITH PERIODO AS (
+     SELECT "$data{%Y%m%d}"
+     --SELECT "20220926"
+),
+COLLECT_DATA AS (
+     SELECT
+        PARSE_DATE("%Y%m%d", date) as date
+      , fullVisitorId
+      , hits.hitNumber
+      , hits.page.pagePath as pagePath
+      , hits.type as hit_type
+      , trafficSource.source
+      , trafficSource.medium
+      , trafficSource.campaign
+      , trafficSource.adContent
+      , trafficSource.isTrueDirect
+      , hits.eventInfo.eventCategory
+      , hits.eventInfo.eventAction
+      , hits.eventInfo.eventLabel
+      , hits.transaction.transactionId
+      , hits.transaction.transactionRevenue as revenue
+      , fullVisitorId||visitId as visit_id
+      , visitStartTime*1000 + hits.time as time
+      , (SELECT productSKU FROM hits.product LIMIT 1) as productSKU
+      , (SELECT AS STRUCT * 
+        FROM (SELECT * FROM hits.customDimensions) 
+        PIVOT(STRING_AGG(value) FOR index 
+        IN (5 as central
+          , 7 as colecao
+          , 9 as id_midia
+          , 11 as titulo_midia
+          , 37 as tags
+          , 56 as porteira_home
+          , 96 as id_template_porteira
+          , 97 as porteira))) as cd
+        FROM `frank-analytics-helper-10.197962013.ga_sessions_*` s, UNNEST(s.hits) as hits--, PERIODO p
+        WHERE _TABLE_SUFFIX = (SELECT * FROM PERIODO)
+),
+last_page as (
+select 
+      date	
+    , FORMAT_TIME('%H',TIME(TIMESTAMP_MILLIS(time),'America/Sao_Paulo')) as hour		  		
+    , fullVisitorId			
+    , hitNumber			
+    , SPLIT(pagePath, "?fbclid=")[OFFSET(0)] as pagePath
+    , hit_type			
+    , FIRST_VALUE(source||' / '||medium) OVER w_sessionid as source_medium					
+    , campaign			
+    , adContent			
+    , isTrueDirect			
+    , eventCategory			
+    , eventAction			
+    , eventLabel			
+    , transactionId			
+    , revenue			
+    , visit_id			
+    , time			
+    , productSKU			
+    , LAST_VALUE(cd.central IGNORE NULLS) OVER w_sessionid as central		
+    , LAST_VALUE(cd.colecao IGNORE NULLS) OVER w_sessionid as colecao	
+    , LAST_VALUE(cd.id_midia IGNORE NULLS) OVER w_sessionid as id_midia	
+    , LAST_VALUE(cd.titulo_midia IGNORE NULLS) OVER w_sessionid as titulo_midia	
+    , LAST_VALUE(cd.tags IGNORE NULLS) OVER w_sessionid as tags	 
+    , LAST_VALUE(cd.id_template_porteira IGNORE NULLS) OVER w_sessionid as id_template_porteira	
+    , LAST_VALUE(cd.porteira IGNORE NULLS) OVER w_sessionid as porteira	
+FROM 
+    COLLECT_DATA
+    WINDOW w_sessionid AS (PARTITION BY visit_id ORDER BY time)
+
+),
+IMPRESSOES_PORTEIRA AS (
+SELECT
+    date
+  , hour
+  , pagePath
+  , source_medium 
+  , central
+  , colecao
+  , tags
+  , titulo_midia
+  , id_midia
+  , id_template_porteira
+  , COUNT(1) as inscriptions
+FROM last_page
+WHERE 
+    eventlabel like '%componente-visualizado%'
+    and eventCategory like '%paywall%'
+    and porteira like '%blogs%'
+GROUP by 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+),
+CLICK_ASSINAR AS (
+SELECT
+    date
+  , hour
+  , pagePath
+  , source_medium 
+  , central
+  , colecao
+  , tags
+  , titulo_midia
+  , id_midia
+  , id_template_porteira
+  , COUNT(1) as inscriptions
+FROM last_page
+WHERE 
+   (eventlabel like '%botao-assinar%' or eventlabel like '%botao-assine%')
+    and eventCategory like '%paywall%'
+    and porteira like '%blogs%'
+
+GROUP by 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+),
+RESULTS AS (
+  SELECT 
+    date
+  , hour
+  , pagePath
+  , source_medium 
+  , central
+  , colecao
+  , tags
+  , titulo_midia
+  , id_midia
+  , id_template_porteira
+  , inscriptions as impressoes_porteira
+  , null as click_assinar
+  FROM IMPRESSOES_PORTEIRA
+  union all 
+  SELECT 
+    date
+  , hour
+  , pagePath
+  , source_medium 
+  , central
+  , colecao
+  , tags
+  , titulo_midia
+  , id_midia
+  , id_template_porteira
+  , null as impressoes_porteira
+  , inscriptions as click_assinar
+  FROM CLICK_ASSINAR
+)
+select * from results

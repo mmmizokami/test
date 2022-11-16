@@ -1,0 +1,127 @@
+config {
+  type: "table",
+  tags: ["daily"],
+  description: "Consulta simples do ARS: ADM_Conteudo_Assinaturas_Blogs_Audiencia_Pageviews",
+  columns: {
+    clientId:"ID unico de identificação",
+    date:"Data da audiencia"
+    
+  }
+}
+
+
+
+#standardSQL
+-- query_id:relatorios_adm_conteudo.newsletter_diario
+WITH PERIODO AS (
+  SELECT "$data{%Y%m%d}"
+--  SELECT FORMAT_DATE("%Y%m%d", DATE_SUB(CURRENT_DATE, INTERVAL 1 DAY))
+), HITS AS (
+    WITH ESTACOES AS (
+        SELECT 
+            clientId
+            , date
+            , trafficSource.campaign
+            , totals.visits AS totalsVisits
+            , CONCAT(clientId, CAST(visitId AS STRING), date) AS session_id
+        FROM `frank-analytics-helper-10.196591263.ga_sessions_*`
+        WHERE _TABLE_SUFFIX = (SELECT * FROM PERIODO)
+          AND trafficSource.source = "newsletter"
+    ), ENTRETENIMENTO AS (
+        SELECT 
+            clientId
+            , date
+            , trafficSource.campaign
+            , totals.visits AS totalsVisits
+            , CONCAT(clientId, CAST(visitId AS STRING), date) AS session_id
+        FROM `frank-analytics-helper-10.141608053.ga_sessions_*`
+        WHERE _TABLE_SUFFIX = (SELECT * FROM PERIODO)
+          AND trafficSource.source = "newsletter"
+    ), NOTICIAS AS (
+        SELECT 
+            clientId
+            , date
+            , trafficSource.campaign
+            , totals.visits AS totalsVisits
+            , CONCAT(clientId, CAST(visitId AS STRING), date) AS session_id
+        FROM `frank-analytics-helper-10.135067135.ga_sessions_*`
+        WHERE _TABLE_SUFFIX = (SELECT * FROM PERIODO)
+          AND trafficSource.source = "newsletter"
+    ), ECONOMIA AS (
+        SELECT 
+            clientId
+            , date
+            , trafficSource.campaign
+            , totals.visits AS totalsVisits
+            , CONCAT(clientId, CAST(visitId AS STRING), date) AS session_id
+        FROM `frank-analytics-helper-10.142277048.ga_sessions_*`
+        WHERE _TABLE_SUFFIX = (SELECT * FROM PERIODO)
+          AND trafficSource.source = "newsletter"
+    ), BOL AS (
+        SELECT 
+            clientId
+            , date
+            , trafficSource.campaign
+            , totals.visits AS totalsVisits
+            , CONCAT(clientId, CAST(visitId AS STRING), date) AS session_id
+        FROM `frank-analytics-helper-10.142286010.ga_sessions_*`
+        WHERE _TABLE_SUFFIX = (SELECT * FROM PERIODO)
+          AND trafficSource.source = "newsletter"
+    )
+    SELECT * FROM ESTACOES
+    UNION ALL
+    SELECT * FROM ENTRETENIMENTO
+    UNION ALL
+    SELECT * FROM NOTICIAS
+    UNION ALL
+    SELECT * FROM ECONOMIA
+    UNION ALL
+    SELECT * FROM BOL
+)
+, NEWSLETTERS AS (
+  SELECT 
+    clientId
+    , date
+    , CASE
+       WHEN REGEXP_CONTAINS(campaign, r"investimentos-?")
+        THEN "investimentos|economia"
+       WHEN REGEXP_CONTAINS(campaign, r"midia[-_]?e?[-_]marketing-?")
+        THEN "midia-e-marketing|economia"
+       WHEN REGEXP_CONTAINS(campaign, r"rap-cru-?")
+        THEN "rap-cru|entrete"
+       WHEN REGEXP_CONTAINS(campaign, r"resumo-((do-dia.*)|(\bmanha\b|\bnoite\b))")
+        THEN "resumo-do-dia|noticias"
+       WHEN REGEXP_CONTAINS(campaign, r"tab-?")
+        THEN "tab|tab"
+       WHEN campaign = "tab-Edição da manhã"
+        THEN "tab-edicao-da-manha|tab"
+       WHEN REGEXP_CONTAINS(campaign, r"tilt-?")
+        THEN "tilt|tilt"
+       WHEN REGEXP_CONTAINS(campaign, r"universa-?")
+        THEN "universa|universa"
+       WHEN REGEXP_CONTAINS(campaign, r"universa-inspira-?")
+        THEN "universa-inspira|universa"
+       WHEN REGEXP_CONTAINS(campaign, r"universa-pausa-?")
+        THEN "universa-pausa|universa"
+       WHEN REGEXP_CONTAINS(campaign, r"universa-transforma-?")
+        THEN "universa-transforma|universa"
+       WHEN REGEXP_CONTAINS(campaign, r"uol-trends-?")
+        THEN "uol-trends|uol"
+       WHEN REGEXP_CONTAINS(campaign, r"ve-tv-?")
+        THEN "ve-tv|tv-e-famosos"
+       WHEN REGEXP_CONTAINS(campaign, r"viva-bem-?")
+        THEN "viva-bem|viva-bem"
+     END as campaign
+    , COUNT(DISTINCT IF(totalsVisits > 0, session_id, null)) AS sessions
+  FROM HITS
+  GROUP BY 1,2,3
+  ORDER BY sessions DESC
+)
+SELECT
+  date, 
+  clientId,
+  SPLIT(campaign, '|')[ORDINAL(1)] as campaign,
+  SPLIT(campaign, '|')[ORDINAL(2)] as station,
+  sessions
+FROM NEWSLETTERS
+WHERE campaign IS NOT NULL

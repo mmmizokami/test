@@ -3,6 +3,9 @@
   "assertionSchema": "dataform_assertions",
   "warehouse": "bigquery",
   "defaultDatabase": "uolcs-caribe-qa",
-  "defaultLocation": "US"
+  "defaultLocation": "US",
+  "vars": {
+   "date": "20221101"
+  }
 }
     
