@@ -1,6 +1,6 @@
 config {
   type: "table",
-  tags: ["daily"],
+  tags: ["ARS"],
   description: "Consulta simples do ARS: ADM_Conteudo_Assinaturas_Blogs_Audiencia_Pageviews",
   columns: {
     clientId:"ID unico de identificação",
@@ -10,11 +10,11 @@ config {
 }
 
 
-/*
+
 #standardSQL
 -- query_id:relatorios_adm_conteudo.newsletter_diario
 WITH PERIODO AS (
-  SELECT "$data{%Y%m%d}"
+  SELECT "${dataform.projectConfig.vars.date}"
 --  SELECT FORMAT_DATE("%Y%m%d", DATE_SUB(CURRENT_DATE, INTERVAL 1 DAY))
 ), HITS AS (
     WITH ESTACOES AS (
@@ -125,4 +125,3 @@ SELECT
   sessions
 FROM NEWSLETTERS
 WHERE campaign IS NOT NULL
-*/

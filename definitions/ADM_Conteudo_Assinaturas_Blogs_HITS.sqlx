@@ -1,6 +1,6 @@
 config {
   type: "table",
-  tags: ["daily"],
+  tags: ["ARS"],
   description: "Consulta simples do ARS: ADM_Conteudo_Assinaturas_Blogs_Audiencia_Pageviews",
   columns: {
     date:"Data da audiencia",
@@ -8,10 +8,10 @@ config {
   }
 }
 
-/*
+
 -- BLOGS HITS
 WITH PERIODO AS (
-     SELECT "$data{%Y%m%d}"
+     SELECT "${dataform.projectConfig.vars.date}"
      --SELECT "20220926"
 ),
 COLLECT_DATA AS (
@@ -153,4 +153,3 @@ RESULTS AS (
   FROM CLICK_ASSINAR
 )
 select * from results
-*/

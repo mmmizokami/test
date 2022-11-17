@@ -1,6 +1,6 @@
 config {
   type: "table",
-  tags: ["daily"],
+  tags: ["ARS"],
   description: "Consulta simples do ARS: ADM_Conteudo_Assinaturas_Blogs_Audiencia_Pageviews",
   columns: {
     date:"Data da audiencia",
@@ -8,9 +8,9 @@ config {
   }
 }
 
-/*
+
 WITH PERIODO AS (
-    SELECT "$data{%Y%m%d}"
+    SELECT "${dataform.projectConfig.vars.date}"
 )
 SELECT 
 	 PARSE_DATE("%Y%m%d",date) AS date
@@ -25,4 +25,3 @@ SELECT
 FROM `frank-analytics-helper-10.197962013.ga_sessions_*`, UNNEST(hits) as hits
 WHERE _TABLE_SUFFIX = (SELECT * FROM PERIODO) and hits.type = 'PAGE'
 group by  1,2,3,4,5,6,7
-*/
