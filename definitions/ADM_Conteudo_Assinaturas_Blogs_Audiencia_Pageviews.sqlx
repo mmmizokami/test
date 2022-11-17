@@ -1,6 +1,6 @@
 config {
   type: "table",
-  tags: ["ARS"],
+  tags: ["teste"],
   description: "Consulta simples do ARS: ADM_Conteudo_Assinaturas_Blogs_Audiencia_Pageviews",
   columns: {
     date:"Data da audiencia",
