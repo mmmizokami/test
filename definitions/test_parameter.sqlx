@@ -1,5 +1,5 @@
 config { type: "table",
-         tags: ["ARS"]
+         tags: ["teste"]
  }
 
 select ${dataform.projectConfig.vars.date} as date_parameter
