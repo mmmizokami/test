@@ -1,0 +1,7 @@
+config { type: "table",
+         tags: ["teste"]
+ }
+
+#teste de execucao commitando o arquivo direto no git
+select '20221123' as date_parameter
+
