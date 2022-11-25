@@ -1,4 +1,4 @@
-config { type: "table",
+config { 
          tags: ["custom_name"]
  }
 
