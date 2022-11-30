@@ -1,10 +1,10 @@
 config {
   type: "table",
-  columns: {
-    column1: {
-      bigqueryPolicyTags: ["projects/dataform-integration-tests/locations/us/taxonomies/800183280162998443/policyTags/494923997126550963"]
-    }
-  }
+  bigquery: {
+    partitionBy: "DATETIME_TRUNC(metric_date, DAY)"
+  }  
 }
 
-select 1 as column1
+SELECT * FROM `analytics-base-historica.relatorios.facebook_daily_posts` 
+WHERE metric_date > "2022-11-20" 
+and metric_date < "2022-11-29"
