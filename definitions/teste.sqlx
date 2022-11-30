@@ -1,7 +1,7 @@
 config {
   type: "table",
   bigquery: {
-    partitionBy: "DATETIME_TRUNC(metric_date, DAY)"
+    partitionBy: "DATE(metric_date)"
   }  
 }
 
