@@ -5,6 +5,6 @@ config {
   }  
 }
 
-SELECT * FROM `analytics-base-historica.relatorios.facebook_daily_posts` 
+SELECT * FROM `uolcs-caribe-qa.dataform.facebook_daily_posts` 
 WHERE metric_date > "2022-11-20" 
 and metric_date < "2022-11-29"
