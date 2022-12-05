@@ -1,7 +1,6 @@
 config { 
          type:"table",
-         tags: ["custom_name"],
-         name: "test_name_${dataform.projectConfig.vars.date}"
+         tags: ["custom_name"]
  }
 
-(select ${dataform.projectConfig.vars.date} as date_parameter)
+create or replace table dataform.test_custom_name_${dataform.projectConfig.vars.date} as (select ${dataform.projectConfig.vars.date} as date_parameter)
