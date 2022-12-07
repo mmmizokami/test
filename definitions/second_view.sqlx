@@ -1,5 +1,6 @@
 config { type: "view" ,
-         tags: ["hourly", "view"]}
+         tags: ["hourly", "view"],
+         dependencies: [ "sample_table"]}
 
 -- Use the ref() function to manage dependencies.
 -- Learn more about ref() and other built in functions here: https://cloud.google.com/dataform/docs/dataform-core
