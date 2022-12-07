@@ -1,6 +1,7 @@
 config {
   type: "table",
   tags: ["ARS"],
+  dependencies: [ "test_git", "first_view"],
   description: "Consulta simples do ARS: ADM_Conteudo_Assinaturas_Blogs_Audiencia_Pageviews",
   columns: {
     date:"Data da audiencia",
@@ -10,7 +11,8 @@ config {
 
 
 WITH PERIODO AS (
-    SELECT "${dataform.projectConfig.vars.date}"
+    --SELECT "${dataform.projectConfig.vars.date}"
+    SELECT "20220926"
 )
 SELECT 
 	 PARSE_DATE("%Y%m%d",date) AS date

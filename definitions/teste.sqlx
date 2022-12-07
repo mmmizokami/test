@@ -5,11 +5,7 @@ config {
   }  
 }
 
-pre_operations {
-  drop table `uolcs-caribe-qa.dataform.teste$20221124` 
-}
-
 SELECT * FROM `uolcs-caribe-qa.dataform.facebook_daily_posts` 
 
 
-${ when(incremental(), `WHERE metric_date > "2022-11-23" and metric_date < "2022-11-27"`) }
+${ when(incremental(), `WHERE page = "uol" and metric_date > "2022-11-23" and metric_date < "2022-11-27"`) }
