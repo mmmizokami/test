@@ -1,0 +1,73 @@
+config {
+  type: "table",
+  dependencies: ["dominant_devices"],
+  bigquery: {
+    partitionBy: "month"
+  }  
+  ,schema: "samsung"
+}
+
+WITH
+BASE_LOGADOS as (
+  SELECT
+    *
+  FROM `learned-pottery-239420.samsung.base_logados_vw`
+),
+imps as (
+  SELECT
+    --  dimensions
+    DATE_TRUNC(i.EventDate, MONTH) as month,
+    id.idtperson as idt_person,
+    -- métricas
+    sum(1) as impressions,
+    sum(COALESCE(i.Clicks, 0)) as clicks
+  FROM `learned-pottery-239420.samsung.network_agg_v3_2021-02-2022-07` i
+  JOIN BASE_LOGADOS id on id.uolid = i.UolId
+  GROUP BY 1, 2
+),
+trocas as (
+  SELECT
+    DISTINCT
+    t.idt_person,
+    DATE_TRUNC(t.date, MONTH) as month,
+
+    t.device_model,
+    t.device_brand,
+    t.old_device_brand,
+    t.old_device_model
+
+  FROM `uolcs-caribe-qa.samsung.dominant_devices` t
+  WHERE is_new_device = 1
+    AND old_device_model IS NOT NULL
+
+    AND device_brand = dominant_brand_1_14
+    AND device_model = dominant_model_1_14
+
+),
+imps_trocas AS (
+SELECT
+  -- dimensões
+  COALESCE(i.month, t.month) as month,
+  COALESCE(i.idt_person, t.idt_person) as idt_person,
+  -- troca
+  t.old_device_model as first_device,
+  t.old_device_brand as first_device_brand,
+  t.device_model as last_device,
+  t.device_brand as last_device_brand,
+
+  -- métricas
+  COALESCE(i.impressions, 0) as impressions,
+  SUM(COALESCE(i.impressions, 0)) OVER(PARTITION BY i.idt_person ORDER BY i.month ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) as subtotal_impressions,
+
+  COALESCE(i.clicks, 0) as clicks,
+  SUM(COALESCE(i.clicks, 0)) OVER(PARTITION BY i.idt_person ORDER BY i.month ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) as subtotal_clicks,
+
+FROM imps i
+FULL OUTER JOIN trocas t ON t.idt_person = i.idt_person
+  AND t.month = i.month
+)
+
+SELECT
+  *
+FROM imps_trocas i
+WHERE month <= CAST("${dataform.projectConfig.vars.date}" AS DATE)

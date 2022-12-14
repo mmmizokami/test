@@ -1,0 +1,77 @@
+config {
+  type: "incremental",
+  tags: ["samsung"],
+  bigquery: {
+    partitionBy: "date"
+  }  
+  ,schema: "samsung"
+}
+
+
+
+
+pre_operations {
+
+DELETE
+FROM `uolcs-caribe-qa.samsung.log_devices_idt_person_v2`
+WHERE date BETWEEN (CAST("${dataform.projectConfig.vars.date}" AS DATE))
+              AND (CAST("${dataform.projectConfig.vars.date}" AS DATE))
+
+}
+
+
+WITH variables as (
+  SELECT
+    CAST("${dataform.projectConfig.vars.date}" AS DATE) as start_date,
+    CAST("${dataform.projectConfig.vars.date}" AS DATE) as end_date
+),
+BASE_LOGADOS as (
+  SELECT
+    uolid as uol_id,
+    idtperson as idt_person
+  FROM `learned-pottery-239420.samsung.base_logados_vw`
+),
+ESTRUTURA as (
+  SELECT
+    DATE(_PARTITIONTIME) as date,
+    uol_id as uol_id,
+    device_category as device_category,
+    device_brand as device_brand,
+    device_model as device_model,
+    session_id as session_id,
+    time as time
+  FROM `analytics-reporting-system.Total_UOL.hits`
+  WHERE
+    DATE(_PARTITIONTIME) >= (SELECT start_date FROM variables)
+    AND DATE(_PARTITIONTIME) <= (SELECT end_date FROM variables)
+    AND hit_type = 'PAGE'
+    AND uol_id IS NOT NULL
+    AND uol_id != 'none'
+),
+TOTAL_HITS AS (
+  SELECT
+    DISTINCT
+    e.date,
+    e.time,
+    b.idt_person,
+    e.session_id,
+    e.device_category,
+    e.device_brand,
+    e.device_model
+  FROM BASE_LOGADOS b
+  JOIN ESTRUTURA e ON b.uol_id = e.uol_id
+)
+SELECT
+  DISTINCT
+    idt_person,
+    date as date,
+    device_brand,
+    device_model,
+    MIN(time) as first_use,
+    MAX(time) as last_use,
+    COUNT(DISTINCT(session_id)) as sessions
+FROM TOTAL_HITS
+WHERE device_category = 'mobile'
+  AND device_brand != "(not set)"
+  AND device_model != "(not set)"
+GROUP BY 1,2,3,4

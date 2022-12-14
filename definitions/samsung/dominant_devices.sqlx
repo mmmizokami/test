@@ -1,0 +1,253 @@
+config {
+  type: "table",
+  dependencies: ["log_devices_idt_person_v2"],
+  bigquery: {
+    partitionBy: "date"
+  }  
+  ,schema: "samsung"
+}
+
+
+WITH
+
+preparation AS (
+  SELECT
+    ld.date,
+    ld.idt_person,
+    ld.device_brand,
+    ld.device_model,
+    ld.sessions as sessions,
+    IF(
+      LAG(ld.date) OVER (PARTITION BY ld.idt_person, ld.device_brand, ld.device_model ORDER BY date) IS NULL,
+      1,
+      0
+    ) as is_new_device,
+    ld.first_use,
+    FIRST_VALUE(ld.date) OVER (PARTITION BY ld.idt_person ORDER BY date) as first_user_date
+  FROM `uolcs-caribe-qa.samsung.log_devices_idt_person_v2` ld
+  WHERE device_brand != '(not set)'
+    AND device_model != '(not set)'
+),
+
+user_dates AS (
+  SELECT
+    DISTINCT
+      date,
+      idt_person
+  FROM preparation p
+),
+
+last_next_user_dates AS (
+  SELECT
+    date,
+    idt_person,
+    LAG(date) OVER (PARTITION BY idt_person ORDER BY date) as last_user_date,
+    LEAD(date) OVER (PARTITION BY idt_person ORDER BY date) as next_user_date
+
+  FROM user_dates
+),
+
+device_changes AS (
+  SELECT
+    *
+  FROM preparation
+  JOIN last_next_user_dates USING(idt_person, date)
+  WHERE is_new_device = 1
+    AND first_user_date != date
+),
+
+all_device_sessions_1_14 AS (
+  SELECT
+    c.date,
+    c.idt_person,
+    s.device_brand,
+    s.device_model,
+    SUM(s.sessions) as sessions_1_14
+  FROM device_changes c
+  JOIN preparation s ON c.idt_person = s.idt_person
+    AND s.date >= c.next_user_date AND s.date < DATE_ADD(c.next_user_date, INTERVAL 14 DAY)
+
+  GROUP BY 1, 2, 3, 4
+),
+
+ordered_device_sessions_1_14 AS (
+  SELECT
+    date,
+    idt_person,
+    device_brand,
+    device_model,
+    sessions_1_14,
+    SUM(ads.sessions_1_14) OVER ( PARTITION BY ads.idt_person, ads.date) as total_1_14,
+    ROW_NUMBER() OVER (PARTITION BY date, idt_person ORDER BY sessions_1_14 DESC) as row_number
+  FROM all_device_sessions_1_14 ads
+),
+
+dominant_device_1_14 AS (
+  SELECT
+    DISTINCT
+      c.date,
+      c.idt_person,
+      c.device_brand,
+      c.device_model,
+      c.next_user_date,
+      sessions_1_14,
+      total_1_14,
+      ods.device_brand as dominant_brand_1_14,
+      ods.device_model as dominant_model_1_14
+
+  FROM device_changes c
+  JOIN ordered_device_sessions_1_14 ods ON  c.date = ods.date
+    AND c.idt_person = ods.idt_person
+    AND ods.row_number = 1
+),
+
+
+old_device_sessions AS (
+  SELECT
+    c.date,
+    c.idt_person,
+    p.device_brand,
+    p.device_model,
+    DATE_SUB(c.last_user_date, INTERVAL 14 DAY) as old_session_start,
+    SUM(p.sessions) as sessions_m_0_14
+  FROM device_changes c
+  JOIN preparation p ON c.idt_person = p.idt_person
+    AND p.date > DATE_SUB(c.last_user_date, INTERVAL 14 DAY) AND p.date <= c.last_user_date
+  GROUP BY 1, 2, 3, 4, 5
+),
+
+ordered_old_device_sessions_1_14 AS (
+  SELECT
+    date,
+    idt_person,
+    device_brand,
+    device_model,
+    old_session_start,
+    sessions_m_0_14,
+
+    SUM(olds.sessions_m_0_14) OVER ( PARTITION BY olds.idt_person, olds.date) as total_sessions_m_0_14,
+    ROW_NUMBER() OVER (PARTITION BY date, idt_person ORDER BY sessions_m_0_14 DESC) as row_number
+  FROM old_device_sessions olds
+),
+
+old_device AS (
+  SELECT
+    DISTINCT
+      c.date,
+      c.idt_person,
+      c.last_user_date as old_session_end,
+      c.device_brand,
+      c.device_model,
+      c.last_user_date,
+      old_session_start,
+
+      sessions_m_0_14 AS old_device_sessions_m_0_14,
+      total_sessions_m_0_14,
+
+      oods.device_brand AS old_device_brand,
+      oods.device_model AS old_device_model
+  FROM device_changes c
+  JOIN ordered_old_device_sessions_1_14 oods ON  c.date = oods.date
+    AND c.idt_person = oods.idt_person
+    AND oods.row_number = 1
+),
+
+old_device_clean AS (
+  SELECT
+    *
+  FROM old_device c
+  WHERE c.device_brand != c.old_device_brand
+        OR c.device_model != c.old_device_model
+),
+
+days_with_sesssions as (
+SELECT
+   idt_person,
+   COUNT(DISTINCT(date)) as days_with_sessions,
+
+   FROM preparation
+   group by 1
+),
+
+
+result AS (
+  SELECT
+
+    p.idt_person,
+    od.last_user_date,
+    p.date,
+    dd_14.next_user_date,
+    p.first_use,
+
+    p.device_brand,
+    p.device_model,
+    p.sessions,
+
+    --  FLAG TROCOU
+    if
+    (
+      --  VIROU DOMINANTE
+      p.device_brand = dominant_brand_1_14
+      AND p.device_model = dominant_model_1_14
+
+      AND (
+        p.device_brand != old_device_brand
+        OR  p.device_model != old_device_model
+      )
+
+      AND old_device_brand IS NOT NULL
+    , 1, 0 ) as trocou,
+
+    --  IDENTIFICAÇÃO DE TROCA
+    p.is_new_device,
+
+
+    -- CONFIRMAÇÃO 7 DIAS
+    dd_14.sessions_1_14,
+    dd_14.total_1_14,
+    dd_14.dominant_brand_1_14,
+    dd_14.dominant_model_1_14,
+
+    --  DEVICE ANTIGO
+    od.old_device_brand,
+    od.old_device_model,
+    od.old_device_sessions_m_0_14,
+    od.total_sessions_m_0_14,
+    od.old_session_start,
+    od.old_session_end,
+
+    --TOTAL DE SESSÕES POR IDT_PERSON
+    dws.days_with_sessions,
+
+  FROM preparation p
+
+  LEFT JOIN dominant_device_1_14 dd_14 ON p.date = dd_14.date
+    AND p.idt_person = dd_14.idt_person
+    AND p.device_brand = dd_14.device_brand
+    AND p.device_model = dd_14.device_model
+    AND p.is_new_device = 1
+
+  -- DEVICE ANTIGO
+  LEFT JOIN old_device_clean od ON  p.date = od.date
+    AND p.idt_person = od.idt_person
+    AND p.device_brand = od.device_brand
+    AND p.device_model = od.device_model
+    AND p.is_new_device = 1
+    AND p.device_brand = dominant_brand_1_14
+    AND p.device_model = dominant_model_1_14
+
+
+  LEFT JOIN days_with_sesssions dws on
+  p.idt_person = dws.idt_person
+)
+
+SELECT
+  *
+FROM result
+
+-- WHERE idt_person IN ('000089efae3f7644d5ba66a4bd46221e0f0ee4e65f138b3d8b622ef56d1ae2f3')
+-- AND date >= '2022-03-01'
+-- AND date <= '2022-04-15'
+-- and is_new_device = 1
+-- ORDER BY idt_person, date
+-- order by date

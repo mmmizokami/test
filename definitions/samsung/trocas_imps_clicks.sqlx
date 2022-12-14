@@ -1,0 +1,286 @@
+config {
+  type: "table",
+  dependencies: ["dominant_devices"],
+  bigquery: {
+    partitionBy: "mes"
+  }  
+  ,schema: "samsung"
+}
+
+
+WITH BASE_LOGADOS as (
+  SELECT * FROM `learned-pottery-239420.samsung.base_logados_vw`
+),
+
+change_check_agg as (
+  SELECT
+    DISTINCT
+      DATE_TRUNC(date, MONTH) as date,
+      idt_person,
+      device_brand,
+      device_model,
+      MAX(old_device_brand) as old_device_brand,
+      MAX(old_device_model) as old_device_model,
+      MAX(trocou) as trocou,
+      MAX(if (trocou = 1, date, null)) as data_troca,
+  FROM `learned-pottery-239420.samsung.dominant_devices` cc
+  GROUP BY 1, 2, 3, 4
+),
+
+random_dates as (
+  SELECT
+    dd.date,
+    dd.idt_person,
+    agg.date AS date_ref,
+    ROW_NUMBER() OVER (PARTITION BY dd.idt_person, agg.date ORDER BY RAND()) as row_number
+  FROM `learned-pottery-239420.samsung.dominant_devices` dd
+  JOIN change_check_agg agg ON dd.idt_person = agg.idt_person
+    AND dd.date <= LAST_DAY(agg.date)
+    AND dd.date >= agg.date
+    AND agg.data_troca IS NULL
+),
+
+fill_dates as (
+  SELECT
+      agg.date,
+      agg.idt_person,
+      device_brand,
+      device_model,
+      COALESCE(
+        agg.data_troca,
+        rd.date
+      ) as data_troca,
+      rd.date_ref,
+      MAX(old_device_brand) AS old_device_brand,
+      MAX(old_device_model) AS old_device_model,
+      MAX(trocou) AS trocou
+  FROM change_check_agg agg
+  LEFT JOIN random_dates rd
+    ON rd.idt_person = agg.idt_person
+    AND rd.date_ref = agg.date
+    AND row_number = 1
+  GROUP BY 1, 2, 3, 4, 5, 6
+),
+
+imps as  (
+  SELECT
+    --  dimensions
+    i.EventDate as date,
+    id.idtperson as idt_person,
+    -- métricas
+    SUM(1) as impressions,
+    SUM(COALESCE(i.Clicks, 0)) as clicks
+  FROM `learned-pottery-239420.samsung.network_agg_v3_2021-02-2022-07` i
+  JOIN BASE_LOGADOS id on id.uolid = i.UolId
+  WHERE i.ViewableImpression = TRUE
+        AND i.MeasurableImpression = TRUE
+  GROUP BY 1, 2
+),
+
+change_imps AS (
+  SELECT
+    agg.date as mes,
+    agg.idt_person,
+    data_troca,
+    device_brand,
+    device_model,
+    old_device_brand,
+    old_device_model,
+
+    COALESCE(SUM(i.impressions),0) as impressoes_30,
+    COALESCE(SUM(i.clicks),0) as cliques_30,
+  FROM fill_dates agg
+  LEFT JOIN imps i ON agg.idt_person = i.idt_person
+    AND i.date > DATE_SUB(agg.data_troca, INTERVAL 30 DAY) AND i.date <= agg.data_troca
+  GROUP BY 1, 2, 3, 4, 5, 6, 7
+),
+
+imp_click_31_60 AS (
+  SELECT
+    agg.date as mes,
+    agg.idt_person,
+    data_troca,
+    device_brand,
+    device_model,
+    old_device_brand,
+    old_device_model,
+
+    COALESCE(SUM(i.impressions),0) as impressoes_31_60,
+    COALESCE(SUM(i.clicks),0) as cliques_31_60,
+  FROM fill_dates agg
+  LEFT JOIN imps i ON agg.idt_person = i.idt_person
+    AND i.date >= DATE_SUB(agg.data_troca, INTERVAL 60 DAY) AND i.date < DATE_SUB(agg.data_troca, INTERVAL 30 DAY)
+  GROUP BY 1, 2, 3, 4, 5, 6, 7
+),
+imp_click_61_90 AS (
+  SELECT
+    agg.date as mes,
+    agg.idt_person,
+    data_troca,
+    device_brand,
+    device_model,
+    old_device_brand,
+    old_device_model,
+
+    COALESCE(SUM(i.impressions),0) as impressoes_61_90,
+    COALESCE(SUM(i.clicks),0) as cliques_61_90,
+  FROM fill_dates agg
+  LEFT JOIN imps i ON agg.idt_person = i.idt_person
+    AND i.date >= DATE_SUB(agg.data_troca, INTERVAL 90 DAY) AND i.date < DATE_SUB(agg.data_troca, INTERVAL 60 DAY)
+  GROUP BY 1, 2, 3, 4, 5, 6, 7
+),
+
+days_before AS (
+  SELECT
+    dm.idt_person,
+    tm.data_troca,
+    COUNT(DISTINCT(dm.date)) as days_before,
+  FROM `learned-pottery-239420.samsung.dominant_devices` dm
+  LEFT JOIN fill_dates tm
+    ON dm.idt_person = tm.idt_person
+  WHERE
+    dm.date >= DATE_TRUNC(tm.data_troca,month)
+    AND dm.date <= tm.data_troca
+  group by 1,2
+),
+days_after AS (
+  SELECT
+    dm.idt_person,
+    tm.data_troca,
+    COUNT(DISTINCT(dm.date)) as days_after,
+  FROM `learned-pottery-239420.samsung.dominant_devices` dm
+  LEFT JOIN fill_dates tm
+    ON dm.idt_person = tm.idt_person
+  WHERE
+    dm.date >tm.data_troca
+    AND dm.date <= LAST_DAY(tm.data_troca)
+  group by 1,2
+),
+
+get_next_sessions as (
+  SELECT
+    dm.idt_person,
+    dm.date,
+    tm.data_troca,
+    ROW_NUMBER() OVER (PARTITION BY dm.idt_person, tm.data_troca  ORDER BY dm.date ASC) as row_number
+
+  FROM `learned-pottery-239420.samsung.dominant_devices` dm
+  LEFT JOIN fill_dates tm
+    ON dm.idt_person = tm.idt_person
+
+  WHERE dm.date > tm.data_troca
+),
+day_next_session as (
+  SELECT
+    dns.idt_person,
+    dns.data_troca,
+    dns.date as day_next_session,
+    from get_next_sessions dns
+
+  WHERE
+   row_number = 1
+),
+
+get_last_sessions as (
+  SELECT
+    dm.idt_person,
+    dm.date,
+    tm.data_troca,
+    ROW_NUMBER() OVER (PARTITION BY dm.idt_person, tm.data_troca  ORDER BY dm.date DESC) as row_number
+
+  FROM `learned-pottery-239420.samsung.dominant_devices` dm
+  LEFT JOIN fill_dates tm
+    ON dm.idt_person = tm.idt_person
+
+  WHERE dm.date < tm.data_troca
+),
+day_last_session as (
+  SELECT
+    dls.idt_person,
+    dls.data_troca,
+    dls.date as day_last_session,
+    from get_last_sessions dls
+
+  WHERE
+   row_number = 1
+),
+
+days_with_sessions as (
+    SELECT
+      DISTINCT
+        days_with_sessions,
+        idt_person,
+    FROM `learned-pottery-239420.samsung.dominant_devices`
+)
+
+
+SELECT
+DISTINCT
+  agg.idt_person,
+  ci.data_troca,
+  ci.mes,
+
+  agg.old_device_brand,
+  agg.old_device_model,
+  COALESCE(ROUND((agg.old_device_sessions_m_0_14/agg.total_sessions_m_0_14), 2), 0) as old_share,
+
+  agg.device_brand,
+  agg.device_model,
+  COALESCE(ROUND(SAFE_DIVIDE(agg.sessions_1_14, agg.total_1_14), 2), 0) as share,
+
+  agg.trocou,
+  if (agg.old_device_brand != 'Samsung' AND agg.device_brand = 'Samsung'  AND agg.trocou = 1,1,0) as trocou_OS,
+  if (agg.old_device_brand = 'Samsung' AND agg.device_brand = 'Samsung' AND agg.trocou = 1,1,0) as trocou_SS,
+  if (agg.old_device_brand = 'Samsung' AND agg.device_brand != 'Samsung' AND agg.trocou = 1,1,0) as trocou_SO,
+  if (agg.old_device_brand != 'Samsung' AND agg.device_brand != 'Samsung' AND agg.trocou = 1,1,0) as trocou_OO,
+
+  COALESCE(ci.impressoes_30, 0) as imp_30,
+  COALESCE(cliques_30, 0) AS cliques_30,
+
+  COALESCE(imp_click_31_60.impressoes_31_60, 0) as imp_31_60,
+  COALESCE(cliques_31_60, 0) AS cliques_31_60,
+
+  COALESCE(imp_click_61_90.impressoes_61_90, 0) as imp_61_90,
+  COALESCE(cliques_61_90, 0) AS cliques_61_90,
+
+  COALESCE((ci.impressoes_30 + imp_click_31_60.impressoes_31_60 + imp_click_61_90.impressoes_61_90), 0) as imp_90,
+  COALESCE((cliques_30 + cliques_31_60 + cliques_61_90), 0) as cliques_90,
+
+  dws.days_with_sessions,
+
+  day_last_session as date_last_session,
+  COALESCE(ABS(DATE_DIFF(day_last_session, ci.data_troca, DAY)), 0) as days_from_last_session,
+
+  day_next_session as date_next_session,
+  COALESCE(ABS(DATE_DIFF(day_next_session, ci.data_troca, DAY)), 0) as days_to_next_session,
+
+  COALESCE(days_before,0) as days_before,
+  COALESCE(days_after,0) as days_after
+
+FROM change_imps ci
+LEFT JOIN imp_click_31_60 USING (idt_person, mes, device_brand, device_model, data_troca)
+LEFT JOIN imp_click_61_90 USING (idt_person, mes, device_brand, device_model, data_troca)
+LEFT JOIN `learned-pottery-239420.samsung.dominant_devices` agg
+  ON agg.idt_person = ci.idt_person
+  AND agg.date = ci.data_troca
+  AND agg.device_brand = ci.device_brand
+  AND agg.device_model = ci.device_model
+LEFT join day_last_session dls
+  ON agg.idt_person = dls.idt_person
+  AND ci.data_troca = dls.data_troca
+LEFT join day_next_session dns
+  ON agg.idt_person = dns.idt_person
+  AND ci.data_troca = dns.data_troca
+LEFT JOIN days_before db
+  ON agg.idt_person = db.idt_person
+  AND ci.data_troca = db.data_troca
+LEFT JOIN days_after da
+  ON agg.idt_person = da.idt_person
+  AND ci.data_troca = da.data_troca
+LEFT JOIN days_with_sessions dws
+  ON agg.idt_person = dws.idt_person
+
+
+-- WHERE agg.idt_person IN ('cc9f40666b4d804c3c94c2cb992d5a52916c1c0f05838b70c70def006d241632')
+--   ORDER by agg.trocou DESC
+-- limit 1000

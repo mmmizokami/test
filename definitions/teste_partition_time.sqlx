@@ -1,9 +1,8 @@
 config {
   type: "incremental",
   bigquery: {
-    partitionBy: "metric_date"
+    partitionBy: "_PARTITIONDATE"
   }  
-  ,schema: "tmp"
 }
 
 SELECT * FROM `uolcs-caribe-qa.dataform.facebook_daily_posts` 

@@ -12,8 +12,8 @@ config {
 
 -- BLOGS HITS
 WITH PERIODO AS (
-     --SELECT "${dataform.projectConfig.vars.date}"
-     SELECT "20220926"
+     SELECT "${dataform.projectConfig.vars.date}"
+     --SELECT "20220926"
 ),
 COLLECT_DATA AS (
      SELECT
