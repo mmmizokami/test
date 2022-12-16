@@ -13,7 +13,7 @@ config {
 pre_operations {
 
 DELETE
-FROM `uolcs-caribe-qa.samsung.log_devices_idt_person_v2`
+FROM `uolcs-caribe-qa.samsung_dataform.log_devices_idt_person_v2`
 WHERE date BETWEEN (CAST("${dataform.projectConfig.vars.date}" AS DATE))
               AND (CAST("${dataform.projectConfig.vars.date}" AS DATE))
 
