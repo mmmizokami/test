@@ -4,7 +4,7 @@ config {
   bigquery: {
     partitionBy: "mes"
   }  
-  ,schema: "samsung"
+  ,schema: "samsung_dataform"
 }
 
 

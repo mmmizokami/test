@@ -4,12 +4,12 @@ config {
   bigquery: {
     partitionBy: "date"
   }  
-  ,schema: "samsung"
+  ,schema: "samsung_dataform"
 }
 
 
 
-/*
+
 pre_operations {
 
 DELETE
@@ -18,7 +18,7 @@ WHERE date BETWEEN (CAST("${dataform.projectConfig.vars.date}" AS DATE))
               AND (CAST("${dataform.projectConfig.vars.date}" AS DATE))
 
 }
-*/
+
 
 WITH variables as (
   SELECT
@@ -29,7 +29,7 @@ BASE_LOGADOS as (
   SELECT
     uolid as uol_id,
     idtperson as idt_person
-  FROM `learned-pottery-239420.samsung.base_logados_vw`
+  FROM `uolcs-caribe-qa.samsung.base_logados_vw`
 ),
 ESTRUTURA as (
   SELECT
@@ -40,7 +40,7 @@ ESTRUTURA as (
     device_model as device_model,
     session_id as session_id,
     time as time
-  FROM `analytics-reporting-system.Total_UOL.hits`
+  FROM `uolcs-caribe-qa.samsung.sample_hits`
   WHERE
     DATE(_PARTITIONTIME) >= (SELECT start_date FROM variables)
     AND DATE(_PARTITIONTIME) <= (SELECT end_date FROM variables)

@@ -1,10 +1,10 @@
 config {
   type: "incremental",
-  tags: ["samsung1"],
+  tags: ["samsung"],
   bigquery: {
     partitionBy: "EventDate"
   }  
-  ,schema: "samsung"
+  ,schema: "samsung_dataform"
 }
 
 
@@ -13,7 +13,7 @@ config {
 pre_operations {
 
 DELETE
-FROM `uolcs-caribe-qa.samsung.ad_impressions`
+FROM `uolcs-caribe-qa.samsung_dataform.ad_impressions`
 WHERE EventDate BETWEEN (CAST("${dataform.projectConfig.vars.date}" AS DATE))
               AND (CAST("${dataform.projectConfig.vars.date}" AS DATE)-1)
 
@@ -41,7 +41,7 @@ SELECT
   Clicks,
   ViewableImpression,
   MeasurableImpression
-FROM `learned-pottery-239420.uol_advertising_stats.external_network` n
+FROM `uolcs-caribe-qa.samsung.sample_external_network` n 
 WHERE
   n.EventDate >= (SELECT start_date FROM variables)
   AND n.EventDate <= (SELECT end_date FROM variables)
