@@ -9,7 +9,7 @@ config {
 
 
 WITH BASE_LOGADOS as (
-  SELECT * FROM `learned-pottery-239420.samsung.base_logados_vw`
+  SELECT * FROM `uolcs-caribe-qa.samsung.base_logados_vw`
 ),
 
 change_check_agg as (
@@ -23,7 +23,7 @@ change_check_agg as (
       MAX(old_device_model) as old_device_model,
       MAX(trocou) as trocou,
       MAX(if (trocou = 1, date, null)) as data_troca,
-  FROM `uolcs-caribe-qa.samsung.dominant_devices` cc
+  FROM `uolcs-caribe-qa.samsung_dataform.dominant_devices` cc
   GROUP BY 1, 2, 3, 4
 ),
 
@@ -33,7 +33,7 @@ random_dates as (
     dd.idt_person,
     agg.date AS date_ref,
     ROW_NUMBER() OVER (PARTITION BY dd.idt_person, agg.date ORDER BY RAND()) as row_number
-  FROM `uolcs-caribe-qa.samsung.dominant_devices` dd
+  FROM `uolcs-caribe-qa.samsung_dataform.dominant_devices` dd
   JOIN change_check_agg agg ON dd.idt_person = agg.idt_person
     AND dd.date <= LAST_DAY(agg.date)
     AND dd.date >= agg.date
@@ -70,7 +70,7 @@ imps as  (
     -- métricas
     SUM(1) as impressions,
     SUM(COALESCE(i.Clicks, 0)) as clicks
-  FROM `learned-pottery-239420.samsung.network_agg_v3_2021-02-2022-07` i
+  FROM `uolcs-caribe-qa.samsung.sample_network_agg_v3_2021-02-2022-07` i
   JOIN BASE_LOGADOS id on id.uolid = i.UolId
   WHERE i.ViewableImpression = TRUE
         AND i.MeasurableImpression = TRUE
@@ -135,7 +135,7 @@ days_before AS (
     dm.idt_person,
     tm.data_troca,
     COUNT(DISTINCT(dm.date)) as days_before,
-  FROM `uolcs-caribe-qa.samsung.dominant_devices` dm
+  FROM `uolcs-caribe-qa.samsung_dataform.dominant_devices` dm
   LEFT JOIN fill_dates tm
     ON dm.idt_person = tm.idt_person
   WHERE
@@ -148,7 +148,7 @@ days_after AS (
     dm.idt_person,
     tm.data_troca,
     COUNT(DISTINCT(dm.date)) as days_after,
-  FROM `uolcs-caribe-qa.samsung.dominant_devices` dm
+  FROM `uolcs-caribe-qa.samsung_dataform.dominant_devices` dm
   LEFT JOIN fill_dates tm
     ON dm.idt_person = tm.idt_person
   WHERE
@@ -164,7 +164,7 @@ get_next_sessions as (
     tm.data_troca,
     ROW_NUMBER() OVER (PARTITION BY dm.idt_person, tm.data_troca  ORDER BY dm.date ASC) as row_number
 
-  FROM `uolcs-caribe-qa.samsung.dominant_devices` dm
+  FROM `uolcs-caribe-qa.samsung_dataform.dominant_devices` dm
   LEFT JOIN fill_dates tm
     ON dm.idt_person = tm.idt_person
 
@@ -188,7 +188,7 @@ get_last_sessions as (
     tm.data_troca,
     ROW_NUMBER() OVER (PARTITION BY dm.idt_person, tm.data_troca  ORDER BY dm.date DESC) as row_number
 
-  FROM `uolcs-caribe-qa.samsung.dominant_devices` dm
+  FROM `uolcs-caribe-qa.samsung_dataform.dominant_devices` dm
   LEFT JOIN fill_dates tm
     ON dm.idt_person = tm.idt_person
 
@@ -210,7 +210,7 @@ days_with_sessions as (
       DISTINCT
         days_with_sessions,
         idt_person,
-    FROM `uolcs-caribe-qa.samsung.dominant_devices`
+    FROM `uolcs-caribe-qa.samsung_dataform.dominant_devices`
 )
 
 
@@ -260,7 +260,7 @@ DISTINCT
 FROM change_imps ci
 LEFT JOIN imp_click_31_60 USING (idt_person, mes, device_brand, device_model, data_troca)
 LEFT JOIN imp_click_61_90 USING (idt_person, mes, device_brand, device_model, data_troca)
-LEFT JOIN `uolcs-caribe-qa.samsung.dominant_devices` agg
+LEFT JOIN `uolcs-caribe-qa.samsung_dataform.dominant_devices` agg
   ON agg.idt_person = ci.idt_person
   AND agg.date = ci.data_troca
   AND agg.device_brand = ci.device_brand

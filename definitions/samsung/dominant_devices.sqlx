@@ -24,7 +24,7 @@ preparation AS (
     ) as is_new_device,
     ld.first_use,
     FIRST_VALUE(ld.date) OVER (PARTITION BY ld.idt_person ORDER BY date) as first_user_date
-  FROM `uolcs-caribe-qa.samsung.log_devices_idt_person_v2` ld
+  FROM `uolcs-caribe-qa.samsung_dataform.log_devices_idt_person_v2` ld
   WHERE device_brand != '(not set)'
     AND device_model != '(not set)'
 ),

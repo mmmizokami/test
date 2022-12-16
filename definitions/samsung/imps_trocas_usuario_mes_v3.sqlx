@@ -11,7 +11,7 @@ WITH
 BASE_LOGADOS as (
   SELECT
     *
-  FROM `learned-pottery-239420.samsung.base_logados_vw`
+  FROM `uolcs-caribe-qa.samsung.base_logados_vw`
 ),
 imps as (
   SELECT
@@ -21,7 +21,7 @@ imps as (
     -- métricas
     sum(1) as impressions,
     sum(COALESCE(i.Clicks, 0)) as clicks
-  FROM `learned-pottery-239420.samsung.network_agg_v3_2021-02-2022-07` i
+  FROM `uolcs-caribe-qa.samsung.sample_network_agg_v3_2021-02-2022-07` i
   JOIN BASE_LOGADOS id on id.uolid = i.UolId
   GROUP BY 1, 2
 ),
@@ -36,7 +36,7 @@ trocas as (
     t.old_device_brand,
     t.old_device_model
 
-  FROM `uolcs-caribe-qa.samsung.dominant_devices` t
+  FROM `uolcs-caribe-qa.samsung_dataform.dominant_devices` t
   WHERE is_new_device = 1
     AND old_device_model IS NOT NULL
 
