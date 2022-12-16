@@ -22,7 +22,7 @@ WHERE EventDate BETWEEN (CAST("${dataform.projectConfig.vars.date}" AS DATE))
 WITH variables as (
   SELECT
     CAST("${dataform.projectConfig.vars.date}" AS DATE) as start_date,
-    CAST("${dataform.projectConfig.vars.date}" AS DATE)-1 as end_date
+    CAST("${dataform.projectConfig.vars.date}" AS DATE) as end_date
 )
 SELECT
   EventDate,
