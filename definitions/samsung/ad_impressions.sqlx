@@ -9,7 +9,7 @@ config {
 
 
 
-
+/*
 pre_operations {
 
 DELETE
@@ -18,7 +18,7 @@ WHERE EventDate BETWEEN (CAST("${dataform.projectConfig.vars.date}" AS DATE))
               AND (CAST("${dataform.projectConfig.vars.date}" AS DATE)-1)
 
 }
-
+*/
 WITH variables as (
   SELECT
     CAST("${dataform.projectConfig.vars.date}" AS DATE) as start_date,
