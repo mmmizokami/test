@@ -15,7 +15,7 @@ pre_operations {
 DELETE
 FROM `uolcs-caribe-qa.samsung_dataform.ad_impressions`
 WHERE EventDate BETWEEN (CAST("${dataform.projectConfig.vars.date}" AS DATE))
-              AND (CAST("${dataform.projectConfig.vars.date}" AS DATE)-1)
+              AND (CAST("${dataform.projectConfig.vars.date}" AS DATE))
 
 }
 
