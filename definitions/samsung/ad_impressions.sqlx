@@ -15,7 +15,7 @@ pre_operations {
 when(
   SELECT COUNT(1) AS cnt
   FROM `uolcs-caribe-qa.samsung_dataform.__TABLES_SUMMARY__`
-  WHERE table_id = 'ad_impressions' = '1',
+  WHERE table_id = 'ad_impressions' = '1';,
 
 
   `DELETE
