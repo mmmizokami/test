@@ -12,11 +12,16 @@ config {
 
 pre_operations {
 
+when(
+  SELECT COUNT(1) AS cnt
+  FROM `uolcs-caribe-qa.samsung_dataform.__TABLES_SUMMARY__`
+  WHERE table_id = 'ad_impressions' = '1',
+
 DELETE
 FROM `uolcs-caribe-qa.samsung_dataform.log_devices_idt_person_v2`
 WHERE date BETWEEN (CAST("${dataform.projectConfig.vars.date}" AS DATE))
               AND (CAST("${dataform.projectConfig.vars.date}" AS DATE))
-
+)
 }
 
 
